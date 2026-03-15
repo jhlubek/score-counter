@@ -19,3 +19,8 @@ Potential games to add as score counters. Ordered roughly by popularity in Czech
 
 - **Durák** — 2-6 players. Last man standing, tracking who's the "fool" across games.
 - **Oko / Jednadvacet (Blackjack)** — 2-8 players. Tracking wins/bets across rounds.
+
+## Infrastructure
+
+- **Cloudflare Web Analytics** — Add privacy-friendly visitor tracking (no cookies, GDPR-compliant). Free, just a `<script>` snippet in each `index.html`.
+- **Cloudflare Pages PR previews** — Deploy preview per pull request for testing before merge. Free tier, unlimited.
