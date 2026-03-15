@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Score Counter</title>
+    <link rel="stylesheet" href="./shared/output.css">
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 min-h-screen text-gray-800 dark:text-gray-200 transition-colors">
+
+<div class="max-w-md mx-auto p-4 pb-16">
+    <div class="flex justify-end mb-2">
+        <button id="theme-toggle" onclick="cycleTheme()" class="text-xl px-2 py-1"></button>
+    </div>
+
+    <h1 class="text-2xl font-bold text-center mb-8" data-i18n="title">Score Counter</h1>
+
+    <div class="space-y-4">
+        <a href="./hearts/" class="block bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm active:bg-gray-50 dark:active:bg-gray-700 transition-colors">
+            <div class="flex items-center gap-4">
+                <span class="text-3xl">♥</span>
+                <div>
+                    <p class="font-bold text-lg" data-i18n="heartsTitle">Hearts</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400" data-i18n="heartsDesc">Track hearts, queen, jack and special combos</p>
+                </div>
+            </div>
+        </a>
+
+        <div class="block bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm opacity-50 cursor-not-allowed">
+            <div class="flex items-center gap-4">
+                <span class="text-3xl">🎯</span>
+                <div>
+                    <p class="font-bold text-lg" data-i18n="genericTitle">Generic Counter</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400" data-i18n="genericDesc">Configurable score counter for any game</p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-1" data-i18n="comingSoon">Coming soon</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-4 left-4 z-40">
+        <div id="lang-selector" class="flex gap-1 text-xl"></div>
+    </div>
+</div>
+
+<script>
+"use strict";
+
+var THEME_KEY = "score-counter-theme";
+var LANG_KEY = "score-counter-lang";
+
+var translations = {
+  en: {
+    title: "Score Counter",
+    heartsTitle: "Hearts",
+    heartsDesc: "Track hearts, queen, jack and special combos",
+    genericTitle: "Generic Counter",
+    genericDesc: "Configurable score counter for any game",
+    comingSoon: "Coming soon",
+  },
+  cs: {
+    title: "Počítadlo skóre",
+    heartsTitle: "Srdce",
+    heartsDesc: "Počítadlo srdcí, dam, kluků a speciálních kombinací",
+    genericTitle: "Obecné počítadlo",
+    genericDesc: "Nastavitelné počítadlo skóre pro jakoukoli hru",
+    comingSoon: "Již brzy",
+  },
+};
+
+var currentLang = "en";
+
+function detectLang() {
+  try {
+    var saved = localStorage.getItem(LANG_KEY);
+    if (saved && translations[saved]) return saved;
+  } catch (_) {}
+  var bl = (navigator.language || "en").slice(0, 2).toLowerCase();
+  if (translations[bl]) return bl;
+  return "en";
+}
+
+function t(key) {
+  var dict = translations[currentLang] || translations.en;
+  return dict[key] || translations.en[key] || key;
+}
+
+function setLang(code) {
+  if (!translations[code]) return;
+  currentLang = code;
+  try { localStorage.setItem(LANG_KEY, code); } catch (_) {}
+  applyTranslations();
+  renderLangSelector();
+}
+
+function applyTranslations() {
+  document.querySelectorAll("[data-i18n]").forEach(function (el) {
+    el.textContent = t(el.getAttribute("data-i18n"));
+  });
+  document.title = t("title");
+}
+
+var langFlags = { en: "\uD83C\uDDEC\uD83C\uDDE7", cs: "\uD83C\uDDE8\uD83C\uDDFF" };
+
+function renderLangSelector() {
+  var container = document.getElementById("lang-selector");
+  if (!container) return;
+  container.innerHTML = Object.keys(translations).map(function (code) {
+    var active = code === currentLang ? " ring-2 ring-red-400 rounded" : " opacity-50";
+    return '<button onclick="setLang(\'' + code + '\')" class="px-1 cursor-pointer' + active + '">' + langFlags[code] + '</button>';
+  }).join("");
+}
+
+var THEME_ICONS = { light: "\u2600\uFE0F", dark: "\uD83C\uDF19", system: "\uD83C\uDF17" };
+var currentTheme = "system";
+
+function loadTheme() {
+  try {
+    var saved = localStorage.getItem(THEME_KEY);
+    if (saved && ["system", "light", "dark"].indexOf(saved) >= 0) currentTheme = saved;
+  } catch (_) {}
+}
+
+function applyTheme() {
+  var html = document.documentElement;
+  if (currentTheme === "dark") {
+    html.classList.add("dark");
+  } else if (currentTheme === "light") {
+    html.classList.remove("dark");
+  } else {
+    if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      html.classList.add("dark");
+    } else {
+      html.classList.remove("dark");
+    }
+  }
+  var btn = document.getElementById("theme-toggle");
+  if (btn) btn.textContent = THEME_ICONS[currentTheme];
+}
+
+function systemIsDark() {
+  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function cycleTheme() {
+  if (currentTheme === "system") {
+    currentTheme = systemIsDark() ? "light" : "dark";
+  } else if (currentTheme === "dark") {
+    currentTheme = systemIsDark() ? "dark" : "system";
+  } else {
+    currentTheme = systemIsDark() ? "system" : "light";
+  }
+  try { localStorage.setItem(THEME_KEY, currentTheme); } catch (_) {}
+  applyTheme();
+}
+
+currentLang = detectLang();
+loadTheme();
+applyTheme();
+applyTranslations();
+renderLangSelector();
+
+if (window.matchMedia) {
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+    if (currentTheme === "system") applyTheme();
+  });
+}
+</script>
+
+</body>
+</html>
