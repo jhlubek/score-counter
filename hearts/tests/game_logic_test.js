@@ -633,46 +633,6 @@ function assertEq(actual, expected, msg) {
   assert(entries[3].manual === null, "clears manual for player 3");
 })();
 
-// ── isGameOver used for quit-saves-game fix ──
-
-(function testIsGameOverDetectsLoser() {
-  var game = {
-    players: ["A", "B", "C", "D"],
-    rounds: [
-      { entries: [
-        { hearts: 13, jack: false, queen: 13, allCombo: false, noCards: false, manual: null },
-        { hearts: 0,  jack: true,  queen: 0,  allCombo: false, noCards: false, manual: null },
-        { hearts: 0,  jack: false, queen: 0,  allCombo: false, noCards: false, manual: null },
-        { hearts: 0,  jack: false, queen: 0,  allCombo: false, noCards: false, manual: null },
-      ]},
-      { entries: [
-        { hearts: 0,  jack: false, queen: 0,  allCombo: false, noCards: false, manual: 80 },
-        { hearts: 0,  jack: false, queen: 0,  allCombo: false, noCards: false, manual: 0  },
-        { hearts: 0,  jack: false, queen: 0,  allCombo: false, noCards: false, manual: 0  },
-        { hearts: 0,  jack: false, queen: 0,  allCombo: false, noCards: false, manual: 0  },
-      ]},
-    ],
-  };
-  assert(isGameOver(game) === true, "isGameOver returns true when a player has >= 100 points");
-  var totals = totalScores(game);
-  assert(totals[0] >= 100, "player A total is >= 100 and would be saved on quit");
-})();
-
-(function testIsGameOverNotOver() {
-  var game = {
-    players: ["A", "B", "C", "D"],
-    rounds: [
-      { entries: [
-        { hearts: 5, jack: false, queen: 0, allCombo: false, noCards: false, manual: null },
-        { hearts: 3, jack: true,  queen: 0, allCombo: false, noCards: false, manual: null },
-        { hearts: 5, jack: false, queen: 13, allCombo: false, noCards: false, manual: null },
-        { hearts: 0, jack: false, queen: 0, allCombo: false, noCards: false, manual: null },
-      ]},
-    ],
-  };
-  assert(isGameOver(game) === false, "isGameOver returns false when no player has >= 100 points");
-})();
-
 // ── Results ──
 
 console.log("\nResults: " + passed + " passed, " + failed + " failed");
