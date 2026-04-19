@@ -392,11 +392,17 @@ var app = (function () {
     container.innerHTML = recent.map(function (g, ri) {
       var idx = state.gameHistory.length - 1 - ri;
       var date = new Date(g.date).toLocaleDateString();
-      var players = g.players.join(", ");
+      var maxFinalScore = Math.max.apply(null, g.finalScores);
+      var playerNames = g.players.map(function (name, i) {
+        var isLoser = g.finalScores[i] === maxFinalScore && maxFinalScore > 0;
+        return isLoser
+          ? '<span class="text-red-800 dark:text-red-400 font-bold">' + escHtml(name) + '</span>'
+          : '<span class="text-gray-400 dark:text-gray-500">' + escHtml(name) + '</span>';
+      }).join('<span class="text-gray-300 dark:text-gray-600">, </span>');
       var scores = g.finalScores.join(" / ");
       return '<div class="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-sm cursor-pointer active:bg-gray-50 dark:active:bg-gray-700" onclick="app.viewHistory(' + idx + ')">' +
         '<div class="flex justify-between items-start">' +
-        '<div><p class="font-semibold text-sm">' + players + '</p>' +
+        '<div><p class="font-semibold text-sm">' + playerNames + '</p>' +
         '<p class="text-xs text-gray-500">' + date + ' &mdash; ' + scores + '</p></div>' +
         '<button onclick="event.stopPropagation(); app.deleteHistory(' + idx + ')" class="text-red-400 text-xs ml-2">&times;</button>' +
         '</div></div>';
@@ -421,7 +427,7 @@ var app = (function () {
       g.players.map(function (name, i) {
         var isMax = totals[i] === maxScore && maxScore > 0;
         var cls = isMax ? "text-red-600 font-bold" : "";
-        return '<th class="py-2 px-2 text-sm ' + cls + '">' + escHtml(name) + '</th>';
+        return '<th class="py-3 px-1 text-lg ' + cls + '" style="max-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">' + escHtml(name) + '</th>';
       }).join("") + '</tr>';
 
     var rows = "";
@@ -437,8 +443,8 @@ var app = (function () {
       }).join("");
     }
 
-    var totalsRow = '<tr class="border-t-2 border-gray-300 dark:border-gray-600 font-bold text-base">' +
-      '<td class="py-2">&Sigma;</td>' +
+    var totalsRow = '<tr class="border-t-2 border-gray-300 dark:border-gray-600 font-bold text-2xl">' +
+      '<td class="py-2 text-base">&Sigma;</td>' +
       totals.map(function (t, i) {
         var isMax = t === maxScore && maxScore > 0;
         var cls = isMax ? "text-red-600 font-bold" : "";
@@ -449,10 +455,10 @@ var app = (function () {
     document.getElementById("history-date").textContent = date;
 
     container.innerHTML =
-      '<div class="overflow-x-auto"><table class="w-full text-center text-sm">' +
-      '<thead>' + header + '</thead>' +
+      '<div class="overflow-x-auto overflow-y-auto max-h-[55vh]"><table class="w-full text-center text-base">' +
+      '<thead class="sticky top-0 z-10 bg-gray-100 dark:bg-gray-900">' + header + '</thead>' +
       '<tbody>' + rows + '</tbody>' +
-      '<tfoot>' + totalsRow + '</tfoot>' +
+      '<tfoot class="sticky bottom-0 z-10 bg-gray-100 dark:bg-gray-900">' + totalsRow + '</tfoot>' +
       '</table></div>';
 
     showScreen("history");
@@ -599,7 +605,7 @@ var app = (function () {
       game.players.map(function (name, i) {
         var isMax = totals[i] === maxScore && maxScore > 0;
         var cls = isMax ? "text-red-600 font-bold" : "";
-        return '<th class="py-2 px-2 text-sm ' + cls + '">' + escHtml(name) + '</th>';
+        return '<th class="py-3 px-1 text-lg ' + cls + '" style="max-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">' + escHtml(name) + '</th>';
       }).join("");
 
     // Rounds
@@ -747,7 +753,7 @@ var app = (function () {
           : "border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-300";
         return '<div class="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-sm">' +
           '<div class="flex items-center justify-between">' +
-          '<span class="font-semibold">' + escHtml(name) + '</span>' +
+          '<span class="font-semibold text-base min-w-0 truncate mr-2">' + escHtml(name) + '</span>' +
           '<div class="flex items-center gap-1">' +
           '<input type="number" inputmode="numeric" value="' + manualVal + '" ' +
           'onchange="app.setManual(' + i + ', this.value)" ' +
@@ -763,47 +769,59 @@ var app = (function () {
       var jackDisabled = hasNoCards || (jackTaken >= 0 && jackTaken !== i);
       var queenDisabled = hasNoCards || e.allCombo || (queenTaken >= 0 && queenTaken !== i);
 
+      var DISABLED_BTN = "bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed";
+
       var hState = heartsButtonState(roundState.entries, i);
-      var heartsLabel = hState.active ? "&#9829; " + hState.count : "&#9829;";
-      var heartsCls = hState.active ? "bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 ring-2 ring-red-400"
-        : (hState.disabled || hasNoCards) ? "bg-gray-50 dark:bg-gray-700 text-gray-300 dark:text-gray-500 cursor-not-allowed"
-        : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300";
+      var heartsLabel = hState.active
+        ? '<span class="text-3xl leading-none">&#9829;</span><span class="text-xs mt-0.5">' + hState.count + '</span>'
+        : '<span class="text-3xl leading-none">&#9829;</span>';
+      var heartsCls = (hState.disabled || hasNoCards) ? DISABLED_BTN
+        : hState.active ? "bg-red-500 text-white ring-2 ring-red-400"
+        : "bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-300";
 
-      var jackLabel = e.jack ? "&#9830; -8" : "&#9830;";
-      var jackCls = e.jack ? "bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-400 ring-2 ring-yellow-400" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300";
-      if (jackDisabled) jackCls = "bg-gray-50 dark:bg-gray-700 text-gray-300 dark:text-gray-500 cursor-not-allowed";
+      var jackLabel = e.jack
+        ? '<span class="text-3xl leading-none">&#9830;</span><span class="text-xs mt-0.5">-8</span>'
+        : '<span class="text-3xl leading-none">&#9830;</span>';
+      var jackCls = jackDisabled ? DISABLED_BTN
+        : e.jack ? "bg-red-500 text-white ring-2 ring-red-400"
+        : "bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-300";
 
-      var queenLabel = e.queen > 0 ? "&#9824; +" + e.queen : "&#9824;";
-      var queenCls = e.queen > 0 ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-400 ring-2 ring-purple-400" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300";
-      if (queenDisabled && !e.queen || e.allCombo) queenCls = "bg-gray-50 dark:bg-gray-700 text-gray-300 dark:text-gray-500 cursor-not-allowed";
+      var queenLabel = e.queen > 0
+        ? '<span class="text-3xl leading-none">&#9824;</span><span class="text-xs mt-0.5">+' + e.queen + '</span>'
+        : '<span class="text-3xl leading-none">&#9824;</span>';
+      var queenCls = ((queenDisabled && !e.queen) || e.allCombo) ? DISABLED_BTN
+        : e.queen > 0 ? "bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900 ring-2 ring-slate-500"
+        : "bg-slate-200 dark:bg-slate-600 text-slate-900 dark:text-slate-100";
+
+      var noCardsHasOtherCards = e.hearts > 0 || e.jack || e.queen > 0 || e.allCombo;
+      var noCardsCls = (!hasNoCards && noCardsHasOtherCards) ? DISABLED_BTN
+        : hasNoCards ? "bg-green-500 text-white ring-2 ring-green-400"
+        : "bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300";
 
       var anyHeartsOrQueen = roundState.entries.some(function (entry) {
         return (entry.hearts > 0 && !entry.allCombo) || entry.queen > 0;
       });
       var allDisabled = hasNoCards || (!e.allCombo && (anyHeartsOrQueen || (queenTaken >= 0 && queenTaken !== i)));
 
-      var allLabel = "ALL";
-      var allCls = e.allCombo ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-400 ring-2 ring-blue-400" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300";
-      if (allDisabled) allCls = "bg-gray-50 dark:bg-gray-700 text-gray-300 dark:text-gray-500 cursor-not-allowed";
-
-      var noCardsCls = hasNoCards ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-400 ring-2 ring-emerald-400" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300";
-      var noCardsHasOtherCards = e.hearts > 0 || e.jack || e.queen > 0 || e.allCombo;
-      if (!hasNoCards && noCardsHasOtherCards) noCardsCls = "bg-gray-50 dark:bg-gray-700 text-gray-300 dark:text-gray-500 cursor-not-allowed";
+      var allLabel = '<span class="text-2xl leading-none font-black">ALL</span>';
+      var allCls = allDisabled ? DISABLED_BTN
+        : e.allCombo ? "bg-red-900 text-white ring-2 ring-red-700"
+        : "bg-red-900/20 dark:bg-red-950 text-red-900 dark:text-red-300";
 
       var roundComplete = isRoundComplete(roundState.entries);
       var scoreDisplay = '<span class="text-lg font-bold ' + scoreColor + '">' + (score > 0 ? "+" + score : score) + '</span>';
 
       return '<div class="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-sm">' +
         '<div class="flex items-center justify-between mb-2">' +
-        '<span class="font-semibold">' + escHtml(name) + '</span>' +
+        '<span class="font-semibold text-2xl min-w-0 truncate mr-2">' + escHtml(name) + '</span>' +
         scoreDisplay +
         '</div>' +
         '<div class="flex gap-2">' +
-        '<button onclick="app.openHearts(' + i + ')"' + ((hState.disabled || hasNoCards) ? ' disabled' : '') + ' class="flex-1 py-3 rounded-lg text-sm font-semibold ' + heartsCls + '">' + heartsLabel + '</button>' +
-        '<button onclick="app.openQueen(' + i + ')"' + (queenDisabled ? ' disabled' : '') + ' class="flex-1 py-3 rounded-lg text-sm font-semibold ' + queenCls + '">' + queenLabel + '</button>' +
-        '<button onclick="app.toggleJack(' + i + ')"' + (jackDisabled ? ' disabled' : '') + ' class="flex-1 py-3 rounded-lg text-sm font-semibold ' + jackCls + '">' + jackLabel + '</button>' +
-        '<button onclick="app.toggleNoCards(' + i + ')"' + ((!hasNoCards && noCardsHasOtherCards) ? ' disabled' : '') + ' class="flex-1 py-3 rounded-lg text-sm font-semibold ' + noCardsCls + '">&#8709;</button>' +
-        '<button onclick="app.toggleAll(' + i + ')"' + (allDisabled ? ' disabled' : '') + ' class="flex-1 py-3 rounded-lg text-sm font-semibold ' + allCls + '">' + allLabel + '</button>' +
+        '<button onclick="app.openHearts(' + i + ')"' + ((hState.disabled || hasNoCards) ? ' disabled' : '') + ' class="flex-1 aspect-square rounded-lg flex flex-col items-center justify-center font-bold ' + heartsCls + '">' + heartsLabel + '</button>' +
+        '<button onclick="app.openQueen(' + i + ')"' + (queenDisabled ? ' disabled' : '') + ' class="flex-1 aspect-square rounded-lg flex flex-col items-center justify-center font-bold ' + queenCls + '">' + queenLabel + '</button>' +
+        '<button onclick="app.toggleJack(' + i + ')"' + (jackDisabled ? ' disabled' : '') + ' class="flex-1 aspect-square rounded-lg flex flex-col items-center justify-center font-bold ' + jackCls + '">' + jackLabel + '</button>' +
+        '<button onclick="app.toggleNoCards(' + i + ')"' + ((!hasNoCards && noCardsHasOtherCards) ? ' disabled' : '') + ' class="flex-1 aspect-square rounded-lg flex flex-col items-center justify-center font-bold ' + noCardsCls + '"><span class="text-3xl leading-none">&#8709;</span></button>' +
+        '<button onclick="app.toggleAll(' + i + ')"' + (allDisabled ? ' disabled' : '') + ' class="flex-1 aspect-square rounded-lg flex flex-col items-center justify-center font-bold ' + allCls + '">' + allLabel + '</button>' +
         '</div>' +
         '</div>';
     }).join("");
@@ -961,6 +979,16 @@ var app = (function () {
 
   function confirmQuit() {
     document.getElementById("modal-quit").classList.add("hidden");
+    var game = state.currentGame;
+    if (game && isGameOver(game)) {
+      state.gameHistory.push({
+        date: new Date().toISOString(),
+        players: game.players.slice(),
+        finalScores: totalScores(game),
+        rounds: game.rounds.slice(),
+      });
+      if (state.gameHistory.length > 5) state.gameHistory = state.gameHistory.slice(-5);
+    }
     state.currentGame = null;
     persist();
     showScreen("home");
