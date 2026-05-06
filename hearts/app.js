@@ -46,6 +46,9 @@ var translations = {
     manualMode: "Manual",
     typePoints: "type points",
     allGames: "All Games",
+    editOldRound: "Edit older round?",
+    editOldRoundMsg: "Round {n} is not the latest. Usually only the last round is edited. Continue?",
+    editOldRoundConfirm: "Continue",
   },
   cs: {
     title: "Srdce - Po\u010D\xEDtadlo",
@@ -85,6 +88,9 @@ var translations = {
     manualMode: "Ručně",
     typePoints: "zadej body",
     allGames: "Všechny hry",
+    editOldRound: "Upravit starší kolo?",
+    editOldRoundMsg: "Kolo {n} není poslední. Obvykle se mění jen poslední kolo. Pokračovat?",
+    editOldRoundConfirm: "Pokračovat",
   },
 };
 
@@ -342,8 +348,28 @@ var app = (function () {
   var state = loadState();
   var currentModal = null;
   var roundState = null; // { manualMode, editIndex, entries: [{hearts,jack,queen,allCombo,manual}] }
+  var pendingEditRoundIdx = null;
+  var roundsScrollPinnedAway = false;
+  var roundsScrollListenerAttached = false;
 
   function persist() { saveState(state); }
+
+  function attachGameRoundsScrollListener() {
+    var el = document.getElementById("game-rounds-scroll");
+    if (!el || roundsScrollListenerAttached) return;
+    roundsScrollListenerAttached = true;
+    el.addEventListener("scroll", function () {
+      var slack = 16;
+      var atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= slack;
+      roundsScrollPinnedAway = !atBottom;
+    }, { passive: true });
+  }
+
+  function scrollGameRoundsToBottomIfNeeded() {
+    var el = document.getElementById("game-rounds-scroll");
+    if (!el || roundsScrollPinnedAway) return;
+    el.scrollTop = el.scrollHeight;
+  }
 
   // ── Screen Management ──
 
@@ -423,11 +449,11 @@ var app = (function () {
     var maxScore = Math.max.apply(null, totals);
 
     var header = '<tr class="border-b-2 border-gray-300 dark:border-gray-600">' +
-      '<th class="py-2 px-1 text-xs text-gray-500">#</th>' +
+      '<th class="w-9 max-w-[2.25rem] py-2 px-0.5 text-xs text-gray-500 font-normal">#</th>' +
       g.players.map(function (name, i) {
         var isMax = totals[i] === maxScore && maxScore > 0;
-        var cls = isMax ? "text-red-600 font-bold" : "";
-        return '<th class="py-3 px-1 text-lg ' + cls + '" style="max-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">' + escHtml(name) + '</th>';
+        var cls = isMax ? "text-red-600 font-bold" : "text-gray-900 dark:text-gray-100";
+        return '<th class="py-2 px-0.5 align-bottom text-xs sm:text-sm font-semibold leading-snug whitespace-normal break-words hyphens-auto min-w-0 ' + cls + '">' + escHtml(name) + '</th>';
       }).join("") + '</tr>';
 
     var rows = "";
@@ -435,7 +461,7 @@ var app = (function () {
       rows = g.rounds.map(function (round, ri) {
         var scores = calcRoundScores(round.entries);
         return '<tr class="border-b border-gray-100 dark:border-gray-700">' +
-          '<td class="py-1 px-1 text-xs text-gray-400">' + (ri + 1) + '</td>' +
+          '<td class="w-9 max-w-[2.25rem] py-1 px-0.5 text-xs text-gray-400">' + (ri + 1) + '</td>' +
           scores.map(function (s) {
             var color = s > 0 ? "text-red-600" : s < 0 ? "text-green-600" : "text-gray-400";
             return '<td class="py-1 px-2 ' + color + '">' + (s > 0 ? "+" + s : s) + '</td>';
@@ -444,7 +470,7 @@ var app = (function () {
     }
 
     var totalsRow = '<tr class="border-t-2 border-gray-300 dark:border-gray-600 font-bold text-2xl">' +
-      '<td class="py-2 text-base">&Sigma;</td>' +
+      '<td class="w-9 max-w-[2.25rem] py-2 px-0.5 text-base">&Sigma;</td>' +
       totals.map(function (t, i) {
         var isMax = t === maxScore && maxScore > 0;
         var cls = isMax ? "text-red-600 font-bold" : "";
@@ -455,7 +481,7 @@ var app = (function () {
     document.getElementById("history-date").textContent = date;
 
     container.innerHTML =
-      '<div class="overflow-x-auto overflow-y-auto max-h-[55vh]"><table class="w-full text-center text-base">' +
+      '<div class="overflow-x-auto overflow-y-auto max-h-[55vh]"><table class="w-full table-fixed text-center text-base">' +
       '<thead class="sticky top-0 z-10 bg-gray-100 dark:bg-gray-900">' + header + '</thead>' +
       '<tbody>' + rows + '</tbody>' +
       '<tfoot class="sticky bottom-0 z-10 bg-gray-100 dark:bg-gray-900">' + totalsRow + '</tfoot>' +
@@ -585,6 +611,7 @@ var app = (function () {
       if (!names[i]) names[i] = t("player") + " " + (i + 1);
     }
     state.currentGame = { players: names, rounds: [], status: "active" };
+    roundsScrollPinnedAway = false;
     persist();
     showScreen("game");
   }
@@ -601,11 +628,11 @@ var app = (function () {
 
     // Header
     var header = document.getElementById("player-header");
-    header.innerHTML = '<th class="py-2 px-1 text-xs text-gray-500">#</th>' +
+    header.innerHTML = '<th class="w-9 max-w-[2.25rem] py-2 px-0.5 text-xs text-gray-500 font-normal">#</th>' +
       game.players.map(function (name, i) {
         var isMax = totals[i] === maxScore && maxScore > 0;
-        var cls = isMax ? "text-red-600 font-bold" : "";
-        return '<th class="py-3 px-1 text-lg ' + cls + '" style="max-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">' + escHtml(name) + '</th>';
+        var cls = isMax ? "text-red-600 font-bold" : "text-gray-900 dark:text-gray-100";
+        return '<th class="py-2 px-0.5 align-bottom text-xs sm:text-sm font-semibold leading-snug whitespace-normal break-words hyphens-auto min-w-0 ' + cls + '">' + escHtml(name) + '</th>';
       }).join("");
 
     // Rounds
@@ -613,7 +640,7 @@ var app = (function () {
     body.innerHTML = game.rounds.map(function (round, ri) {
       var scores = calcRoundScores(round.entries);
       return '<tr class="border-b border-gray-100 dark:border-gray-700 cursor-pointer active:bg-gray-50 dark:active:bg-gray-700" onclick="app.editRound(' + ri + ')">' +
-        '<td class="py-1 px-1 text-xs text-gray-400">' + (ri + 1) + '</td>' +
+        '<td class="w-9 max-w-[2.25rem] py-1 px-0.5 text-xs text-gray-400">' + (ri + 1) + '</td>' +
         scores.map(function (s) {
           var color = s > 0 ? "text-red-500" : s < 0 ? "text-green-600" : "text-gray-400";
           return '<td class="py-1 px-2 ' + color + '">' + (s > 0 ? "+" + s : s) + '</td>';
@@ -623,7 +650,7 @@ var app = (function () {
 
     // Totals
     var totalsRow = document.getElementById("totals-row");
-    totalsRow.innerHTML = '<td class="py-2">&Sigma;</td>' +
+    totalsRow.innerHTML = '<td class="w-9 max-w-[2.25rem] py-2 px-0.5 text-base">&Sigma;</td>' +
       totals.map(function (t, i) {
         var isMax = t === maxScore && maxScore > 0;
         var cls = isMax ? "text-red-600 font-bold" : "";
@@ -643,6 +670,12 @@ var app = (function () {
       banner.classList.add("hidden");
       btn.classList.remove("hidden");
     }
+
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        scrollGameRoundsToBottomIfNeeded();
+      });
+    });
   }
 
   function finishGame() {
@@ -676,7 +709,7 @@ var app = (function () {
     showScreen("round");
   }
 
-  function editRound(idx) {
+  function beginEditRound(idx) {
     var game = state.currentGame;
     var round = game.rounds[idx];
     var entries = round.entries.map(function (e) {
@@ -689,6 +722,32 @@ var app = (function () {
     };
     renderRound();
     showScreen("round");
+  }
+
+  function editRound(idx) {
+    var game = state.currentGame;
+    if (!game || !game.rounds[idx]) return;
+    var lastIdx = game.rounds.length - 1;
+    if (idx !== lastIdx) {
+      pendingEditRoundIdx = idx;
+      var msgEl = document.getElementById("edit-old-round-msg");
+      if (msgEl) msgEl.textContent = t("editOldRoundMsg").replace("{n}", String(idx + 1));
+      document.getElementById("modal-edit-old-round").classList.remove("hidden");
+      return;
+    }
+    beginEditRound(idx);
+  }
+
+  function confirmEditOldRound() {
+    document.getElementById("modal-edit-old-round").classList.add("hidden");
+    var idx = pendingEditRoundIdx;
+    pendingEditRoundIdx = null;
+    if (typeof idx === "number" && idx >= 0) beginEditRound(idx);
+  }
+
+  function closeEditOldRoundModal() {
+    document.getElementById("modal-edit-old-round").classList.add("hidden");
+    pendingEditRoundIdx = null;
   }
 
   function renderRound() {
@@ -1021,6 +1080,7 @@ var app = (function () {
 
   function init() {
     applyStaticTranslations();
+    attachGameRoundsScrollListener();
     if (state.currentGame && state.currentGame.status === "active") {
       showScreen("game");
     } else {
@@ -1036,6 +1096,8 @@ var app = (function () {
     startGame: startGame,
     newRound: newRound,
     editRound: editRound,
+    confirmEditOldRound: confirmEditOldRound,
+    closeEditOldRoundModal: closeEditOldRoundModal,
     confirmRound: confirmRound,
     cancelRound: cancelRound,
     confirmCancel: confirmCancel,
