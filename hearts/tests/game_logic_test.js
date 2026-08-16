@@ -1,7 +1,7 @@
 // Game logic unit tests for hearts-counter scoring engine.
 // Run with: node tests/game_logic_test.js
 
-const { calcRoundScores, totalScores, isGameOver, isRoundComplete, isValidManualScore, maxHeartsForPlayer, heartsButtonState, checkAutoAll, toggleAllState, toggleManualModeState } = require("../app.js");
+const { calcRoundScores, totalScores, isGameOver, isRoundComplete, isValidManualScore, maxHeartsForPlayer, heartsButtonState, checkAutoAll, toggleAllState, toggleManualModeState, shufflerIndex, passDirection } = require("../app.js");
 
 let passed = 0;
 let failed = 0;
@@ -671,6 +671,36 @@ function assertEq(actual, expected, msg) {
     ],
   };
   assert(isGameOver(game) === false, "isGameOver returns false when no player has >= 100 points");
+})();
+
+// ── Shuffler rotation ──
+
+(function testShufflerStartsAtFirstPlayer() {
+  assertEq(shufflerIndex(0, 4), 0, "first player shuffles before any rounds");
+})();
+
+(function testShufflerAdvancesEachRound() {
+  assertEq(shufflerIndex(1, 4), 1, "second player shuffles after 1 completed round");
+  assertEq(shufflerIndex(2, 4), 2, "third player shuffles after 2 completed rounds");
+  assertEq(shufflerIndex(3, 4), 3, "fourth player shuffles after 3 completed rounds");
+})();
+
+(function testShufflerWrapsAfterFullCycle() {
+  assertEq(shufflerIndex(4, 4), 0, "first player shuffles again after 4 rounds");
+  assertEq(shufflerIndex(5, 4), 1, "rotation continues after wrap");
+})();
+
+(function testShufflerForEditedRound() {
+  assertEq(shufflerIndex(0, 4), 0, "round 1 (index 0) was shuffled by first player");
+  assertEq(shufflerIndex(2, 4), 2, "round 3 (index 2) was shuffled by third player");
+})();
+
+(function testPassDirectionFollowsShuffleCycle() {
+  assertEq(passDirection(0), "left", "first shuffler: pass left");
+  assertEq(passDirection(1), "right", "second shuffler: pass right");
+  assertEq(passDirection(2), "across", "third shuffler: pass across");
+  assertEq(passDirection(3), "hold", "fourth shuffler: no pass");
+  assertEq(passDirection(4), "left", "cycle wraps to pass left");
 })();
 
 // ── Results ──

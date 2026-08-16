@@ -31,6 +31,7 @@ Score counter for the card game Hearts (Srdce). Tracks points across rounds for 
   - When Jack or Queen is taken, it's disabled for other players to take.
 - Allow entering points manually instead of using buttons by switching to manual mode, by clicking on manual button in top right corner. In that mode, all other buttons and remaining cards are disabled, and it accepts only expected counts of points, with total count with +13 or +26 or +39 queen variations and ALL special case. Input validates entries in the range [-8, 52]; invalid values show red glow and disable the confirm button.
 - Player with highest score has bold red color name and his score too.
+- Who shuffles also marks the pass direction for that round: 1st player left, 2nd right, 3rd across, 4th no pass, then wrap. Setup shows a small direction icon to the right of each name. On the game board, the current direction is a muted icon in the top-right corner (hidden when the game is over). Not shown on the round entry screen.
 - Confirm round button is not enabled until all points are given.
 - Clicking on back button will show modal to confirm if the user wants to cancel the round.
 - Hearts input field are grayed out for values that can't be taken, because other players already took some hearts.
