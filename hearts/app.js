@@ -46,6 +46,11 @@ var translations = {
     manualMode: "Manual",
     typePoints: "type points",
     allGames: "All Games",
+    shuffles: "Shuffles",
+    passLeft: "Pass left",
+    passRight: "Pass right",
+    passAcross: "Pass across",
+    passHold: "No pass",
     editOldRound: "Edit older round?",
     editOldRoundMsg: "Round {n} is not the latest. Usually only the last round is edited. Continue?",
     editOldRoundConfirm: "Continue",
@@ -88,6 +93,11 @@ var translations = {
     manualMode: "Ručně",
     typePoints: "zadej body",
     allGames: "Všechny hry",
+    shuffles: "Míchá",
+    passLeft: "Přihrát doleva",
+    passRight: "Přihrát doprava",
+    passAcross: "Přihrát naproti",
+    passHold: "Bez přihrávky",
     editOldRound: "Upravit starší kolo?",
     editOldRoundMsg: "Kolo {n} není poslední. Obvykle se mění jen poslední kolo. Pokračovat?",
     editOldRoundConfirm: "Pokračovat",
@@ -247,6 +257,36 @@ function totalScores(game) {
 function isGameOver(game) {
   var totals = totalScores(game);
   return totals.some(function (t) { return t >= MAX_SCORE; });
+}
+
+function shufflerIndex(completedRounds, playerCount) {
+  if (!playerCount || playerCount < 1) return 0;
+  return ((completedRounds % playerCount) + playerCount) % playerCount;
+}
+
+var PASS_DIRS = ["left", "right", "across", "hold"];
+
+function passDirection(playerIndex) {
+  return PASS_DIRS[((playerIndex % 4) + 4) % 4];
+}
+
+function passDirectionI18nKey(dir) {
+  if (dir === "left") return "passLeft";
+  if (dir === "right") return "passRight";
+  if (dir === "across") return "passAcross";
+  return "passHold";
+}
+
+function passDirIcon(dir, sizeClass) {
+  var paths = {
+    left: '<path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/>',
+    right: '<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>',
+    across: '<path d="M12 19V5"/><path d="M6 11l6-6 6 6"/>',
+    hold: '<path d="M6 6l12 12"/><path d="M18 6L6 18"/>',
+  };
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="' + (sizeClass || "w-5 h-5") + '" aria-hidden="true">' +
+    (paths[dir] || paths.hold) +
+    "</svg>";
 }
 
 function isValidManualScore(v) {
@@ -506,11 +546,17 @@ var app = (function () {
   function renderSetup(players) {
     var container = document.getElementById("player-list");
     container.innerHTML = players.map(function (name, i) {
+      var dir = passDirection(i);
+      var hintTitle = t("shuffles") + " - " + t(passDirectionI18nKey(dir));
+      var icon = '<span class="w-8 h-8 shrink-0 flex items-center justify-center text-gray-400 dark:text-gray-500" title="' + escHtml(hintTitle) + '">' +
+        passDirIcon(dir, "w-6 h-6") +
+        "</span>";
       return '<div class="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-xl p-2 shadow-sm player-row" data-idx="' + i + '">' +
         '<span class="text-gray-400 dark:text-gray-500 cursor-grab select-none text-lg drag-handle px-1" style="touch-action:none;">&#9776;</span>' +
         '<input type="text" value="' + escHtml(name) + '" placeholder="' + t("player") + ' ' + (i + 1) + '" ' +
         'class="flex-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-red-400" ' +
         'data-player-input="' + i + '">' +
+        icon +
         '</div>';
     }).join("");
     initDragAndDrop(container);
@@ -634,6 +680,17 @@ var app = (function () {
         var cls = isMax ? "text-red-600 font-bold" : "text-gray-900 dark:text-gray-100";
         return '<th class="py-2 px-0.5 align-bottom text-xs sm:text-sm font-semibold leading-snug whitespace-normal break-words hyphens-auto min-w-0 ' + cls + '">' + escHtml(name) + '</th>';
       }).join("");
+
+    var passHint = document.getElementById("game-pass-hint");
+    if (passHint) {
+      if (gameOver) {
+        passHint.innerHTML = "";
+      } else {
+        var dir = passDirection(shufflerIndex(game.rounds.length, game.players.length));
+        var hintTitle = t("shuffles") + " - " + t(passDirectionI18nKey(dir));
+        passHint.innerHTML = '<span title="' + escHtml(hintTitle) + '">' + passDirIcon(dir, "w-6 h-6") + "</span>";
+      }
+    }
 
     // Rounds
     var body = document.getElementById("rounds-body");
@@ -803,6 +860,7 @@ var app = (function () {
       var isManual = e.manual !== null && e.manual !== undefined;
       var score = isManual ? e.manual : allScores[i];
       var scoreColor = score > 0 ? "text-red-600" : score < 0 ? "text-green-600" : "text-gray-500";
+      var nameSpan = '<span class="font-semibold text-base min-w-0 truncate mr-2">' + escHtml(name) + "</span>";
 
       if (roundState.manualMode) {
         var manualVal = isManual ? e.manual : "";
@@ -812,7 +870,7 @@ var app = (function () {
           : "border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-300";
         return '<div class="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-sm">' +
           '<div class="flex items-center justify-between">' +
-          '<span class="font-semibold text-base min-w-0 truncate mr-2">' + escHtml(name) + '</span>' +
+          nameSpan +
           '<div class="flex items-center gap-1">' +
           '<input type="number" inputmode="numeric" value="' + manualVal + '" ' +
           'onchange="app.setManual(' + i + ', this.value)" ' +
@@ -872,7 +930,7 @@ var app = (function () {
 
       return '<div class="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-sm">' +
         '<div class="flex items-center justify-between mb-2">' +
-        '<span class="font-semibold text-2xl min-w-0 truncate mr-2">' + escHtml(name) + '</span>' +
+        '<span class="font-semibold text-2xl min-w-0 truncate mr-2">' + escHtml(name) + "</span>" +
         scoreDisplay +
         '</div>' +
         '<div class="flex gap-2">' +
@@ -1127,5 +1185,5 @@ var app = (function () {
 })();
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { calcRoundScores: calcRoundScores, totalScores: totalScores, isGameOver: isGameOver, isRoundComplete: isRoundComplete, isValidManualScore: isValidManualScore, maxHeartsForPlayer: maxHeartsForPlayer, heartsButtonState: heartsButtonState, checkAutoAll: checkAutoAll, toggleAllState: toggleAllState, toggleManualModeState: toggleManualModeState };
+  module.exports = { calcRoundScores: calcRoundScores, totalScores: totalScores, isGameOver: isGameOver, isRoundComplete: isRoundComplete, isValidManualScore: isValidManualScore, maxHeartsForPlayer: maxHeartsForPlayer, heartsButtonState: heartsButtonState, checkAutoAll: checkAutoAll, toggleAllState: toggleAllState, toggleManualModeState: toggleManualModeState, shufflerIndex: shufflerIndex, passDirection: passDirection };
 }
