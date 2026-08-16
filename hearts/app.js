@@ -547,14 +547,17 @@ var app = (function () {
     var container = document.getElementById("player-list");
     container.innerHTML = players.map(function (name, i) {
       var dir = passDirection(i);
+      var isShuffler = i === 0;
       var hintTitle = t("shuffles") + " - " + t(passDirectionI18nKey(dir));
       var icon = '<span class="w-8 h-8 shrink-0 flex items-center justify-center text-gray-400 dark:text-gray-500" title="' + escHtml(hintTitle) + '">' +
         passDirIcon(dir, "w-6 h-6") +
         "</span>";
+      var inputCls = "flex-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-red-400";
+      if (isShuffler) inputCls += " ring-1 ring-gray-400/70 dark:ring-gray-500";
       return '<div class="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-xl p-2 shadow-sm player-row" data-idx="' + i + '">' +
         '<span class="text-gray-400 dark:text-gray-500 cursor-grab select-none text-lg drag-handle px-1" style="touch-action:none;">&#9776;</span>' +
         '<input type="text" value="' + escHtml(name) + '" placeholder="' + t("player") + ' ' + (i + 1) + '" ' +
-        'class="flex-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-red-400" ' +
+        'class="' + inputCls + '" ' +
         'data-player-input="' + i + '">' +
         icon +
         '</div>';
@@ -674,11 +677,16 @@ var app = (function () {
 
     // Header
     var header = document.getElementById("player-header");
+    var nextShuffler = gameOver ? -1 : shufflerIndex(game.rounds.length, game.players.length);
     header.innerHTML = '<th class="w-9 max-w-[2.25rem] py-2 px-0.5 text-xs text-gray-500 font-normal">#</th>' +
       game.players.map(function (name, i) {
         var isMax = totals[i] === maxScore && maxScore > 0;
         var cls = isMax ? "text-red-600 font-bold" : "text-gray-900 dark:text-gray-100";
-        return '<th class="py-2 px-0.5 align-bottom text-xs sm:text-sm font-semibold leading-snug whitespace-normal break-words hyphens-auto min-w-0 ' + cls + '">' + escHtml(name) + '</th>';
+        var nameHtml = escHtml(name);
+        if (i === nextShuffler) {
+          nameHtml = '<span class="inline-block rounded px-1 py-0.5 ring-1 ring-gray-400/70 dark:ring-gray-500" title="' + escHtml(t("shuffles")) + '">' + nameHtml + "</span>";
+        }
+        return '<th class="py-2 px-0.5 align-bottom text-xs sm:text-sm font-semibold leading-snug whitespace-normal break-words hyphens-auto min-w-0 ' + cls + '">' + nameHtml + '</th>';
       }).join("");
 
     var passHint = document.getElementById("game-pass-hint");
