@@ -936,9 +936,9 @@ var app = (function () {
       var roundComplete = isRoundComplete(roundState.entries);
       var scoreDisplay = '<span class="text-lg font-bold ' + scoreColor + '">' + (score > 0 ? "+" + score : score) + '</span>';
 
-      return '<div class="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-sm">' +
-        '<div class="flex items-center justify-between mb-2">' +
-        '<span class="font-semibold text-2xl min-w-0 truncate mr-2">' + escHtml(name) + "</span>" +
+      return '<div class="bg-white dark:bg-gray-800 rounded-xl px-3 py-2 shadow-sm">' +
+        '<div class="flex items-center justify-between mb-1">' +
+        '<span class="font-semibold text-xl min-w-0 truncate mr-2">' + escHtml(name) + "</span>" +
         scoreDisplay +
         '</div>' +
         '<div class="flex gap-2">' +

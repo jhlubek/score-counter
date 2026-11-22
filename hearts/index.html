@@ -105,23 +105,23 @@
 </div>
 
 <!-- Round Entry Screen -->
-<div id="screen-round" class="screen p-4 pb-40 hidden">
-    <div class="flex items-center justify-between mb-4">
+<div id="screen-round" class="screen px-4 pt-2 pb-32 hidden">
+    <div class="flex items-center justify-between mb-2">
         <button onclick="app.cancelRound()" class="text-gray-500 text-sm py-1">&larr; <span data-i18n="cancel">Cancel</span></button>
         <h2 class="text-lg font-bold" id="round-title">Round</h2>
         <button id="btn-manual-mode" onclick="app.toggleManualMode()" class="text-gray-500 text-sm py-1" data-i18n="manualMode">Manual</button>
     </div>
 
-    <div id="round-players" class="space-y-4">
+    <div id="round-players" class="space-y-2">
         <!-- per-player round entry, filled by JS -->
     </div>
 
     <!-- Sticky bottom: remaining cards + confirm -->
-    <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 z-40">
-        <div id="round-remaining" class="text-center text-xs text-gray-500 dark:text-gray-400 mb-2">
+    <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-2 z-40">
+        <div id="round-remaining" class="text-center text-xs text-gray-500 dark:text-gray-400 mb-1">
             <!-- filled by JS -->
         </div>
-        <button onclick="app.confirmRound()" id="btn-confirm-round" class="w-full max-w-md mx-auto block bg-green-600 dark:bg-green-700 text-white text-lg font-semibold py-4 rounded-xl active:bg-green-700 dark:active:bg-green-800 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:text-gray-500 dark:disabled:text-gray-400" disabled data-i18n="confirmRound">
+        <button onclick="app.confirmRound()" id="btn-confirm-round" class="w-full max-w-md mx-auto block bg-green-600 dark:bg-green-700 text-white text-lg font-semibold py-3 rounded-xl active:bg-green-700 dark:active:bg-green-800 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:text-gray-500 dark:disabled:text-gray-400" disabled data-i18n="confirmRound">
             Confirm Round
         </button>
     </div>
