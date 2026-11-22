@@ -45,21 +45,21 @@
         <h2 class="text-xl font-bold text-center mb-4" data-i18n="gameSettings">Game settings</h2>
         <label class="block mb-4">
             <span class="block text-sm font-semibold mb-1" data-i18n="playTo">Play to</span>
-            <input id="rules-max-score" data-rules-key="maxScore" oninput="app.refreshRulesField(this)" type="number" inputmode="numeric" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-3 text-base text-center focus:outline-none focus:ring-2 focus:ring-red-400">
+            <input id="rules-max-score" data-rules-key="maxScore" oninput="app.refreshRulesField(this)" type="number" inputmode="numeric" value="100" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-3 text-base text-center focus:outline-none focus:ring-2 focus:ring-red-400">
         </label>
         <label class="block mb-4">
             <span class="block text-sm font-semibold mb-1" data-i18n="jackPoints">Jack points</span>
-            <input id="rules-jack" data-rules-key="jackPoints" oninput="app.refreshRulesField(this)" type="number" inputmode="numeric" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-3 text-base text-center focus:outline-none focus:ring-2 focus:ring-red-400">
+            <input id="rules-jack" data-rules-key="jackPoints" oninput="app.refreshRulesField(this)" type="number" inputmode="numeric" value="-8" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-3 text-base text-center focus:outline-none focus:ring-2 focus:ring-red-400">
         </label>
         <p class="text-sm font-semibold mb-2" data-i18n="tookAll">Took everything</p>
         <div class="grid grid-cols-2 gap-3 mb-2">
             <label class="block">
                 <span class="block text-xs text-gray-500 dark:text-gray-400 mb-1" data-i18n="allTaker">That player</span>
-                <input id="rules-all-taker" data-rules-key="allTakerPoints" oninput="app.refreshRulesField(this)" type="number" inputmode="numeric" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-3 text-base text-center focus:outline-none focus:ring-2 focus:ring-red-400">
+                <input id="rules-all-taker" data-rules-key="allTakerPoints" oninput="app.refreshRulesField(this)" type="number" inputmode="numeric" value="0" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-3 text-base text-center focus:outline-none focus:ring-2 focus:ring-red-400">
             </label>
             <label class="block">
                 <span class="block text-xs text-gray-500 dark:text-gray-400 mb-1" data-i18n="allOthers">Other players</span>
-                <input id="rules-all-others" data-rules-key="allOthersPoints" oninput="app.refreshRulesField(this)" type="number" inputmode="numeric" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-3 text-base text-center focus:outline-none focus:ring-2 focus:ring-red-400">
+                <input id="rules-all-others" data-rules-key="allOthersPoints" oninput="app.refreshRulesField(this)" type="number" inputmode="numeric" value="26" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-3 text-base text-center focus:outline-none focus:ring-2 focus:ring-red-400">
             </label>
         </div>
         <button onclick="app.resetRules()" class="w-full text-gray-500 dark:text-gray-400 text-sm py-3" data-i18n="resetSettings">
@@ -226,6 +226,6 @@
     </div>
 </div>
 
-<script src="./app.js"></script>
+<script src="./app.js?v=20261122-losers"></script>
 </body>
 </html>

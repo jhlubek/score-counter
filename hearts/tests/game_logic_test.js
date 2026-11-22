@@ -752,9 +752,10 @@ function assertEq(actual, expected, msg) {
 })();
 
 (function testTiedPlayersOverTheLimitAllLose() {
-  assertEq(losingPlayerIndexes([0, 26, 18, 26], 10), [1, 2, 3], "every player over the limit loses, including a lower score");
+  assertEq(losingPlayerIndexes([0, 26, 18, 26], 10), [1, 3], "only players tied for the highest score lose");
   assertEq(losingPlayerIndexes([0, 26, 18, 26], 26), [1, 3], "players tied on the limit all lose");
-  assertEq(losingPlayerIndexes([10, 30, 22, 30], 20), [1, 2, 3], "different scores over the limit all lose");
+  assertEq(losingPlayerIndexes([10, 30, 22, 30], 20), [1, 3], "a lower score over the limit does not lose");
+  assertEq(losingPlayerIndexes([30, 30, 30, 10], 20), [0, 1, 2], "every player tied for the highest score loses");
   assertEq(losingPlayerIndexes([0, 40, 10, 5], 20), [1], "a single player over the limit loses");
   assertEq(losingPlayerIndexes([10, 10, 10, 10], 20), [], "nobody over the limit");
 })();

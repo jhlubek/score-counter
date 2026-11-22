@@ -324,9 +324,14 @@ function isGameOver(game) {
 }
 
 function losingPlayerIndexes(totals, limit) {
-  var losers = [];
+  var highest = -Infinity;
   for (var i = 0; i < totals.length; i++) {
-    if (totals[i] >= limit) losers.push(i);
+    if (totals[i] > highest) highest = totals[i];
+  }
+  if (highest < limit) return [];
+  var losers = [];
+  for (var j = 0; j < totals.length; j++) {
+    if (totals[j] === highest) losers.push(j);
   }
   return losers;
 }
