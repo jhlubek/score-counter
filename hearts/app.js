@@ -42,6 +42,8 @@ var translations = {
     gameDetail: "Game Detail",
     player: "Player",
     lost: "lost!",
+    lostMany: "lost!",
+    and: "and",
     remaining: "Remaining:",
     hearts: "hearts",
     jack: "Jack",
@@ -96,6 +98,8 @@ var translations = {
     gameDetail: "Detail hry",
     player: "Hr\xE1\u010D",
     lost: "prohr\xE1l!",
+    lostMany: "prohr\u00E1li!",
+    and: "a",
     remaining: "Zb\xFDv\xE1:",
     hearts: "srdcí",
     jack: "Kluk",
@@ -319,6 +323,14 @@ function isGameOver(game) {
   return totals.some(function (t) { return t >= maxScore; });
 }
 
+function losingPlayerIndexes(totals, limit) {
+  var losers = [];
+  for (var i = 0; i < totals.length; i++) {
+    if (totals[i] >= limit) losers.push(i);
+  }
+  return losers;
+}
+
 function shufflerIndex(completedRounds, playerCount) {
   if (!playerCount || playerCount < 1) return 0;
   return ((completedRounds % playerCount) + playerCount) % playerCount;
@@ -520,9 +532,9 @@ var app = (function () {
     container.innerHTML = recent.map(function (g, ri) {
       var idx = state.gameHistory.length - 1 - ri;
       var date = new Date(g.date).toLocaleDateString();
-      var maxFinalScore = Math.max.apply(null, g.finalScores);
+      var loserIdxs = losingPlayerIndexes(g.finalScores, normalizeRules(g.rules).maxScore);
       var playerNames = g.players.map(function (name, i) {
-        var isLoser = g.finalScores[i] === maxFinalScore && maxFinalScore > 0;
+        var isLoser = loserIdxs.indexOf(i) >= 0;
         return isLoser
           ? '<span class="text-red-800 dark:text-red-400 font-bold">' + escHtml(name) + '</span>'
           : '<span class="text-gray-400 dark:text-gray-500">' + escHtml(name) + '</span>';
@@ -549,11 +561,12 @@ var app = (function () {
     var container = document.getElementById("history-detail");
     var totals = g.finalScores;
     var maxScore = Math.max.apply(null, totals);
+    var loserIdxs = losingPlayerIndexes(totals, normalizeRules(g.rules).maxScore);
 
     var header = '<tr class="border-b-2 border-gray-300 dark:border-gray-600">' +
       '<th class="w-9 max-w-[2.25rem] py-2 px-0.5 text-xs text-gray-500 font-normal">#</th>' +
       g.players.map(function (name, i) {
-        var isMax = totals[i] === maxScore && maxScore > 0;
+        var isMax = loserIdxs.indexOf(i) >= 0;
         var cls = isMax ? "text-red-600 font-bold" : "text-gray-900 dark:text-gray-100";
         return '<th class="py-2 px-0.5 align-bottom text-xs sm:text-sm font-semibold leading-snug whitespace-normal break-words hyphens-auto min-w-0 ' + cls + '">' + escHtml(name) + '</th>';
       }).join("") + '</tr>';
@@ -573,10 +586,10 @@ var app = (function () {
 
     var totalsRow = '<tr class="border-t-2 border-gray-300 dark:border-gray-600 font-bold text-2xl">' +
       '<td class="w-9 max-w-[2.25rem] py-2 px-0.5 text-base">&Sigma;</td>' +
-      totals.map(function (t, i) {
-        var isMax = t === maxScore && maxScore > 0;
+      totals.map(function (score, i) {
+        var isMax = loserIdxs.indexOf(i) >= 0;
         var cls = isMax ? "text-red-600 font-bold" : "";
-        return '<td class="py-2 px-2 ' + cls + '">' + t + '</td>';
+        return '<td class="py-2 px-2 ' + cls + '">' + score + '</td>';
       }).join("") + '</tr>';
 
     var date = new Date(g.date).toLocaleDateString();
@@ -802,6 +815,12 @@ var app = (function () {
 
   // ── Game Board ──
 
+  function formatNameList(names) {
+    if (names.length <= 1) return names[0] || "";
+    if (names.length === 2) return names[0] + " " + t("and") + " " + names[1];
+    return names.slice(0, -1).join(", ") + " " + t("and") + " " + names[names.length - 1];
+  }
+
   function renderGame() {
     var game = state.currentGame;
     if (!game) { showScreen("home"); return; }
@@ -810,13 +829,14 @@ var app = (function () {
     var totals = totalScores(game);
     var maxScore = Math.max.apply(null, totals);
     var gameOver = isGameOver(game);
+    var loserIdxs = losingPlayerIndexes(totals, rules.maxScore);
 
     // Header
     var header = document.getElementById("player-header");
     var nextShuffler = gameOver ? -1 : shufflerIndex(game.rounds.length, game.players.length);
     header.innerHTML = '<th class="w-9 max-w-[2.25rem] py-2 px-0.5 text-xs text-gray-500 font-normal">#</th>' +
       game.players.map(function (name, i) {
-        var isMax = totals[i] === maxScore && maxScore > 0;
+        var isMax = gameOver ? loserIdxs.indexOf(i) >= 0 : (totals[i] === maxScore && maxScore > 0);
         var cls = isMax ? "text-red-600 font-bold" : "text-gray-900 dark:text-gray-100";
         var nameHtml = escHtml(name);
         if (i === nextShuffler) {
@@ -852,11 +872,11 @@ var app = (function () {
     // Totals
     var totalsRow = document.getElementById("totals-row");
     totalsRow.innerHTML = '<td class="w-9 max-w-[2.25rem] py-2 px-0.5 text-base">&Sigma;</td>' +
-      totals.map(function (t, i) {
-        var isMax = t === maxScore && maxScore > 0;
+      totals.map(function (score, i) {
+        var isMax = gameOver ? loserIdxs.indexOf(i) >= 0 : (score === maxScore && maxScore > 0);
         var cls = isMax ? "text-red-600 font-bold" : "";
-        var lost = t >= rules.maxScore ? " bg-red-50 dark:bg-red-900/30" : "";
-        return '<td class="py-2 px-2 ' + cls + lost + '">' + t + '</td>';
+        var lost = score >= rules.maxScore ? " bg-red-50 dark:bg-red-900/30" : "";
+        return '<td class="py-2 px-2 ' + cls + lost + '">' + score + '</td>';
       }).join("");
 
     // Game over
@@ -865,8 +885,9 @@ var app = (function () {
     if (gameOver) {
       banner.classList.remove("hidden");
       btn.classList.add("hidden");
-      var loser = game.players[totals.indexOf(Math.max.apply(null, totals))];
-      document.getElementById("game-over-text").textContent = loser + " " + t("lost");
+      var loserNames = loserIdxs.map(function (i) { return game.players[i]; });
+      var verb = loserNames.length > 1 ? t("lostMany") : t("lost");
+      document.getElementById("game-over-text").textContent = formatNameList(loserNames) + " " + verb;
     } else {
       banner.classList.add("hidden");
       btn.classList.remove("hidden");
@@ -1334,5 +1355,5 @@ var app = (function () {
 })();
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { calcRoundScores: calcRoundScores, totalScores: totalScores, isGameOver: isGameOver, isRoundComplete: isRoundComplete, isValidManualScore: isValidManualScore, maxHeartsForPlayer: maxHeartsForPlayer, heartsButtonState: heartsButtonState, checkAutoAll: checkAutoAll, toggleAllState: toggleAllState, toggleManualModeState: toggleManualModeState, shufflerIndex: shufflerIndex, passDirection: passDirection, normalizeRules: normalizeRules };
+  module.exports = { calcRoundScores: calcRoundScores, totalScores: totalScores, isGameOver: isGameOver, isRoundComplete: isRoundComplete, isValidManualScore: isValidManualScore, maxHeartsForPlayer: maxHeartsForPlayer, heartsButtonState: heartsButtonState, checkAutoAll: checkAutoAll, toggleAllState: toggleAllState, toggleManualModeState: toggleManualModeState, shufflerIndex: shufflerIndex, passDirection: passDirection, normalizeRules: normalizeRules, losingPlayerIndexes: losingPlayerIndexes };
 }

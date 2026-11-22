@@ -8,7 +8,7 @@ Score counter for the card game Hearts (Srdce). Tracks points across rounds for 
 - Game settings sit on the same screen, below the players, so they are reached by scrolling. Play-to score, jack points, and the two "took everything" scores (that player, and the others). Defaults are 100, -8, 0 and 26. Saved values stay in this browser until they are changed or reset. A value that differs from its default is shown in bold. Start Game and Cancel stay fixed at the bottom.
 - Add 4 players. Use player names from previous game if available. Allow to simply change order of players with drag and drop.
 - Each player has a name and a score.
-- The player whose score reaches the play-to score lost the game. Default play-to score is 100.
+- Every player whose score reaches the play-to score lost the game. Default play-to score is 100. Players over the limit lose even when their scores differ, and a tie is not reduced to a single loser.
 - Historical view of game rounds is kept.
 - Game rules are simple:
   - Each player starts with 0 points.

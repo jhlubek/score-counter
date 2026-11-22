@@ -1,7 +1,7 @@
 // Game logic unit tests for hearts-counter scoring engine.
 // Run with: node tests/game_logic_test.js
 
-const { calcRoundScores, totalScores, isGameOver, isRoundComplete, isValidManualScore, maxHeartsForPlayer, heartsButtonState, checkAutoAll, toggleAllState, toggleManualModeState, shufflerIndex, passDirection, normalizeRules } = require("../app.js");
+const { calcRoundScores, totalScores, isGameOver, isRoundComplete, isValidManualScore, maxHeartsForPlayer, heartsButtonState, checkAutoAll, toggleAllState, toggleManualModeState, shufflerIndex, passDirection, normalizeRules, losingPlayerIndexes } = require("../app.js");
 
 let passed = 0;
 let failed = 0;
@@ -749,6 +749,14 @@ function assertEq(actual, expected, msg) {
   assert(isGameOver(game), "game ends at the configured score");
   game.rules.maxScore = 41;
   assert(!isGameOver(game), "game continues below the configured score");
+})();
+
+(function testTiedPlayersOverTheLimitAllLose() {
+  assertEq(losingPlayerIndexes([0, 26, 18, 26], 10), [1, 2, 3], "every player over the limit loses, including a lower score");
+  assertEq(losingPlayerIndexes([0, 26, 18, 26], 26), [1, 3], "players tied on the limit all lose");
+  assertEq(losingPlayerIndexes([10, 30, 22, 30], 20), [1, 2, 3], "different scores over the limit all lose");
+  assertEq(losingPlayerIndexes([0, 40, 10, 5], 20), [1], "a single player over the limit loses");
+  assertEq(losingPlayerIndexes([10, 10, 10, 10], 20), [], "nobody over the limit");
 })();
 
 (function testManualRangeFollowsJackAndAll() {
