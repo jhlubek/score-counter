@@ -8,7 +8,7 @@ Score counter for the card game Hearts (Srdce). Tracks points across rounds for 
 - Game settings sit on the same screen, below the players, so they are reached by scrolling. Play-to score, jack points, and the two "took everything" scores (that player, and the others). Defaults are 100, -8, 0 and 26. Saved values stay in this browser until they are changed or reset. A value that differs from its default is shown in bold. Start Game and Cancel stay fixed at the bottom.
 - Add 4 players. Use player names from previous game if available. Allow to simply change order of players with drag and drop.
 - Each player has a name and a score.
-- Every player whose score reaches the play-to score lost the game. Default play-to score is 100. Players over the limit lose even when their scores differ, and a tie is not reduced to a single loser.
+- The game ends when any score reaches the play-to score. Default play-to score is 100. The losers are the players with the highest score. A tie for that highest score is not reduced to a single loser. A lower score does not lose, even when it is also over the limit.
 - Historical view of game rounds is kept.
 - Game rules are simple:
   - Each player starts with 0 points.
@@ -19,7 +19,7 @@ Score counter for the card game Hearts (Srdce). Tracks points across rounds for 
   - If queen in spades shown at the beginning of the round, it gives 13 more points to the player who took it.
   - Special case: When all hearts and queen are taken by the same player, that player gets the configured taker points (default 0) and every other player gets the configured others points (default 26). In that case no other queen and hearts points are counted. Jack is not counted to ALL and can be taken by any player, including one with all hearts and queen.
   - Special case: When player takes no cards in a round, it gives -5 points to the player who took no cards.
-  - When the play-to score is reached, the game ends but winning player is not shown, only losing player and next game button is shown. The next game button will start a new game with same players and the saved settings.
+  - When the play-to score is reached, the game ends but the winning player is not shown, only the losing players and the next game button. The next game button will start a new game with the same players and the saved settings.
 
 ## Round Entry UI
 
