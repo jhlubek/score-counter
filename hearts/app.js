@@ -3,7 +3,13 @@
 const STORAGE_KEY = "hearts-counter";
 const LANG_KEY = "hearts-counter-lang";
 const THEME_KEY = "hearts-counter-theme";
-const MAX_SCORE = 100;
+const RULES_KEY = "hearts-counter-rules";
+const DEFAULT_RULES = {
+  maxScore: 100,
+  jackPoints: -8,
+  allTakerPoints: 0,
+  allOthersPoints: 26,
+};
 
 // ── i18n ──────────────────────────────────────────────────────────
 
@@ -54,6 +60,13 @@ var translations = {
     editOldRound: "Edit older round?",
     editOldRoundMsg: "Round {n} is not the latest. Usually only the last round is edited. Continue?",
     editOldRoundConfirm: "Continue",
+    gameSettings: "Game settings",
+    playTo: "Play to",
+    jackPoints: "Jack points",
+    tookAll: "Took everything",
+    allTaker: "That player",
+    allOthers: "Other players",
+    resetSettings: "Reset to defaults",
   },
   cs: {
     title: "Srdce - Po\u010D\xEDtadlo",
@@ -101,6 +114,13 @@ var translations = {
     editOldRound: "Upravit starší kolo?",
     editOldRoundMsg: "Kolo {n} není poslední. Obvykle se mění jen poslední kolo. Pokračovat?",
     editOldRoundConfirm: "Pokračovat",
+    gameSettings: "Nastavení hry",
+    playTo: "Hra do",
+    jackPoints: "Body za kluka",
+    tookAll: "Vzal vše",
+    allTaker: "Daný hráč",
+    allOthers: "Ostatní",
+    resetSettings: "Obnovit výchozí",
   },
 };
 
@@ -214,9 +234,51 @@ function saveState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function intOr(v, fallback) {
+  if (typeof v === "number" && isFinite(v)) return Math.trunc(v);
+  if (typeof v === "string" && /^-?\d+$/.test(v.trim())) return parseInt(v.trim(), 10);
+  return fallback;
+}
+
+function normalizeRules(rules) {
+  var src = rules || {};
+  var maxScore = intOr(src.maxScore, DEFAULT_RULES.maxScore);
+  if (maxScore < 1) maxScore = DEFAULT_RULES.maxScore;
+  return {
+    maxScore: maxScore,
+    jackPoints: intOr(src.jackPoints, DEFAULT_RULES.jackPoints),
+    allTakerPoints: intOr(src.allTakerPoints, DEFAULT_RULES.allTakerPoints),
+    allOthersPoints: intOr(src.allOthersPoints, DEFAULT_RULES.allOthersPoints),
+  };
+}
+
+function loadRules() {
+  try {
+    var raw = localStorage.getItem(RULES_KEY);
+    if (raw) return normalizeRules(JSON.parse(raw));
+  } catch (_) {}
+  return normalizeRules(null);
+}
+
+function saveRules(rules) {
+  var normalized = normalizeRules(rules);
+  try { localStorage.setItem(RULES_KEY, JSON.stringify(normalized)); } catch (_) {}
+  return normalized;
+}
+
+function manualScoreBounds(rules) {
+  var r = normalizeRules(rules);
+  var cardMax = 52;
+  return {
+    min: Math.min(r.jackPoints, -5, r.allTakerPoints + r.jackPoints, r.allOthersPoints - 5),
+    max: Math.max(cardMax, r.allTakerPoints, r.allOthersPoints),
+  };
+}
+
 // ── Scoring Engine (exported for tests) ────────────────────────────
 
-function calcRoundScores(entries) {
+function calcRoundScores(entries, rules) {
+  var r = normalizeRules(rules);
   var allComboIdx = -1;
   for (var idx = 0; idx < entries.length; idx++) {
     if (entries[idx].allCombo) { allComboIdx = idx; break; }
@@ -229,16 +291,12 @@ function calcRoundScores(entries) {
     var pts = 0;
 
     if (allComboIdx >= 0) {
-      if (e.allCombo) {
-        pts = 0;
-      } else {
-        pts = 26;
-      }
+      pts = e.allCombo ? r.allTakerPoints : r.allOthersPoints;
     } else {
       pts = (e.hearts || 0) + (e.queen || 0);
     }
 
-    if (jack) pts -= 8;
+    if (jack) pts += r.jackPoints;
     if (e.noCards) pts -= 5;
     return pts;
   });
@@ -246,9 +304,10 @@ function calcRoundScores(entries) {
 }
 
 function totalScores(game) {
+  var rules = normalizeRules(game && game.rules);
   var totals = game.players.map(function () { return 0; });
   game.rounds.forEach(function (round) {
-    var scores = calcRoundScores(round.entries);
+    var scores = calcRoundScores(round.entries, rules);
     scores.forEach(function (s, i) { totals[i] += s; });
   });
   return totals;
@@ -256,7 +315,8 @@ function totalScores(game) {
 
 function isGameOver(game) {
   var totals = totalScores(game);
-  return totals.some(function (t) { return t >= MAX_SCORE; });
+  var maxScore = normalizeRules(game && game.rules).maxScore;
+  return totals.some(function (t) { return t >= maxScore; });
 }
 
 function shufflerIndex(completedRounds, playerCount) {
@@ -289,8 +349,10 @@ function passDirIcon(dir, sizeClass) {
     "</svg>";
 }
 
-function isValidManualScore(v) {
-  return typeof v === "number" && !isNaN(v) && v >= -8 && v <= 52;
+function isValidManualScore(v, rules) {
+  if (typeof v !== "number" || isNaN(v)) return false;
+  var bounds = manualScoreBounds(rules);
+  return v >= bounds.min && v <= bounds.max;
 }
 
 function isRoundComplete(entries) {
@@ -499,7 +561,7 @@ var app = (function () {
     var rows = "";
     if (g.rounds && g.rounds.length) {
       rows = g.rounds.map(function (round, ri) {
-        var scores = calcRoundScores(round.entries);
+        var scores = calcRoundScores(round.entries, g.rules);
         return '<tr class="border-b border-gray-100 dark:border-gray-700">' +
           '<td class="w-9 max-w-[2.25rem] py-1 px-0.5 text-xs text-gray-400">' + (ri + 1) + '</td>' +
           scores.map(function (s) {
@@ -532,6 +594,68 @@ var app = (function () {
 
   // ── Player Setup ──
 
+  var RULES_INPUT = "w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-3 text-base text-center focus:outline-none focus:ring-2 focus:ring-red-400";
+  var RULES_INPUT_BAD = RULES_INPUT + " border-red-400 ring-2 ring-red-400";
+
+  function parseStrictInt(raw) {
+    var s = (raw + "").trim();
+    if (!/^-?\d+$/.test(s)) return null;
+    return parseInt(s, 10);
+  }
+
+  function styleRulesField(el) {
+    var key = el.getAttribute("data-rules-key");
+    var n = parseStrictInt(el.value);
+    var valid = key === "maxScore" ? n !== null && n >= 1 : n !== null;
+    var differs = n !== null && n !== DEFAULT_RULES[key];
+    el.className = (valid ? RULES_INPUT : RULES_INPUT_BAD) + (differs ? " font-bold" : "");
+    return { valid: valid, value: n };
+  }
+
+  function refreshRulesField(el) {
+    styleRulesField(el);
+  }
+
+  function fillRulesForm(rules) {
+    var r = normalizeRules(rules);
+    var fields = {
+      "rules-max-score": r.maxScore,
+      "rules-jack": r.jackPoints,
+      "rules-all-taker": r.allTakerPoints,
+      "rules-all-others": r.allOthersPoints,
+    };
+    Object.keys(fields).forEach(function (id) {
+      var el = document.getElementById(id);
+      el.value = fields[id];
+      styleRulesField(el);
+    });
+  }
+
+  function readRulesForm() {
+    var maxEl = document.getElementById("rules-max-score");
+    var jackEl = document.getElementById("rules-jack");
+    var takerEl = document.getElementById("rules-all-taker");
+    var othersEl = document.getElementById("rules-all-others");
+    var maxScore = styleRulesField(maxEl);
+    var jackPoints = styleRulesField(jackEl);
+    var allTakerPoints = styleRulesField(takerEl);
+    var allOthersPoints = styleRulesField(othersEl);
+    if (!maxScore.valid || !jackPoints.valid || !allTakerPoints.valid || !allOthersPoints.valid) return null;
+    return {
+      maxScore: maxScore.value,
+      jackPoints: jackPoints.value,
+      allTakerPoints: allTakerPoints.value,
+      allOthersPoints: allOthersPoints.value,
+    };
+  }
+
+  function openSetup(players) {
+    fillRulesForm(loadRules());
+    renderSetup(players);
+    showScreen("setup");
+    window.scrollTo(0, 0);
+  }
+
   function newGame() {
     var lastPlayers = ["", "", "", ""];
     if (state.gameHistory.length) {
@@ -539,8 +663,12 @@ var app = (function () {
     } else if (state.currentGame) {
       lastPlayers = state.currentGame.players.slice();
     }
-    renderSetup(lastPlayers);
-    showScreen("setup");
+    openSetup(lastPlayers);
+  }
+
+  function resetRules() {
+    saveRules(DEFAULT_RULES);
+    fillRulesForm(DEFAULT_RULES);
   }
 
   function renderSetup(players) {
@@ -654,12 +782,19 @@ var app = (function () {
   }
 
   function startGame() {
+    var rules = readRulesForm();
+    if (!rules) {
+      var bad = document.querySelector("#screen-setup .ring-red-400");
+      if (bad && bad.scrollIntoView) bad.scrollIntoView({ block: "center" });
+      return;
+    }
+    saveRules(rules);
     var inputs = document.querySelectorAll("[data-player-input]");
     var names = Array.from(inputs).map(function (el) { return el.value.trim(); });
     for (var i = 0; i < names.length; i++) {
       if (!names[i]) names[i] = t("player") + " " + (i + 1);
     }
-    state.currentGame = { players: names, rounds: [], status: "active" };
+    state.currentGame = { players: names, rounds: [], status: "active", rules: rules };
     roundsScrollPinnedAway = false;
     persist();
     showScreen("game");
@@ -671,6 +806,7 @@ var app = (function () {
     var game = state.currentGame;
     if (!game) { showScreen("home"); return; }
 
+    var rules = normalizeRules(game.rules);
     var totals = totalScores(game);
     var maxScore = Math.max.apply(null, totals);
     var gameOver = isGameOver(game);
@@ -703,7 +839,7 @@ var app = (function () {
     // Rounds
     var body = document.getElementById("rounds-body");
     body.innerHTML = game.rounds.map(function (round, ri) {
-      var scores = calcRoundScores(round.entries);
+      var scores = calcRoundScores(round.entries, rules);
       return '<tr class="border-b border-gray-100 dark:border-gray-700 cursor-pointer active:bg-gray-50 dark:active:bg-gray-700" onclick="app.editRound(' + ri + ')">' +
         '<td class="w-9 max-w-[2.25rem] py-1 px-0.5 text-xs text-gray-400">' + (ri + 1) + '</td>' +
         scores.map(function (s) {
@@ -719,7 +855,7 @@ var app = (function () {
       totals.map(function (t, i) {
         var isMax = t === maxScore && maxScore > 0;
         var cls = isMax ? "text-red-600 font-bold" : "";
-        var lost = t >= MAX_SCORE ? " bg-red-50 dark:bg-red-900/30" : "";
+        var lost = t >= rules.maxScore ? " bg-red-50 dark:bg-red-900/30" : "";
         return '<td class="py-2 px-2 ' + cls + lost + '">' + t + '</td>';
       }).join("");
 
@@ -751,12 +887,12 @@ var app = (function () {
       players: prevPlayers,
       finalScores: totalScores(game),
       rounds: game.rounds.slice(),
+      rules: normalizeRules(game.rules),
     });
     if (state.gameHistory.length > 5) state.gameHistory = state.gameHistory.slice(-5);
     state.currentGame = null;
     persist();
-    renderSetup(prevPlayers);
-    showScreen("setup");
+    openSetup(prevPlayers);
   }
 
   // ── Round Entry ──
@@ -817,6 +953,7 @@ var app = (function () {
 
   function renderRound() {
     var game = state.currentGame;
+    var rules = normalizeRules(game.rules);
     var container = document.getElementById("round-players");
     var roundNum = roundState.editIndex >= 0
       ? roundState.editIndex + 1
@@ -862,7 +999,7 @@ var app = (function () {
       }
     }
 
-    var allScores = calcRoundScores(roundState.entries);
+    var allScores = calcRoundScores(roundState.entries, rules);
     container.innerHTML = game.players.map(function (name, i) {
       var e = roundState.entries[i];
       var isManual = e.manual !== null && e.manual !== undefined;
@@ -872,11 +1009,11 @@ var app = (function () {
 
       if (roundState.manualMode) {
         var manualVal = isManual ? e.manual : "";
-        var invalid = isManual && !isValidManualScore(e.manual);
+        var invalid = isManual && !isValidManualScore(e.manual, rules);
         var inputRing = invalid
           ? "border-red-400 dark:border-red-500 ring-2 ring-red-400"
           : "border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-300";
-        return '<div class="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-sm">' +
+        return '<div class="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-sm border border-gray-300 dark:border-gray-600">' +
           '<div class="flex items-center justify-between">' +
           nameSpan +
           '<div class="flex items-center gap-1">' +
@@ -904,8 +1041,9 @@ var app = (function () {
         : hState.active ? "bg-red-500 text-white ring-2 ring-red-400"
         : "bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-300";
 
+      var jackPts = rules.jackPoints > 0 ? "+" + rules.jackPoints : String(rules.jackPoints);
       var jackLabel = e.jack
-        ? '<span class="text-3xl leading-none">&#9830;</span><span class="text-xs mt-0.5">-8</span>'
+        ? '<span class="text-3xl leading-none">&#9830;</span><span class="text-xs mt-0.5">' + jackPts + '</span>'
         : '<span class="text-3xl leading-none">&#9830;</span>';
       var jackCls = jackDisabled ? DISABLED_BTN
         : e.jack ? "bg-red-500 text-white ring-2 ring-red-400"
@@ -936,7 +1074,7 @@ var app = (function () {
       var roundComplete = isRoundComplete(roundState.entries);
       var scoreDisplay = '<span class="text-lg font-bold ' + scoreColor + '">' + (score > 0 ? "+" + score : score) + '</span>';
 
-      return '<div class="bg-white dark:bg-gray-800 rounded-xl px-3 py-2 shadow-sm">' +
+      return '<div class="bg-white dark:bg-gray-800 rounded-xl px-3 py-2 shadow-sm border border-gray-300 dark:border-gray-600">' +
         '<div class="flex items-center justify-between mb-1">' +
         '<span class="font-semibold text-xl min-w-0 truncate mr-2">' + escHtml(name) + "</span>" +
         scoreDisplay +
@@ -1111,6 +1249,7 @@ var app = (function () {
         players: game.players.slice(),
         finalScores: totalScores(game),
         rounds: game.rounds.slice(),
+        rules: normalizeRules(game.rules),
       });
       if (state.gameHistory.length > 5) state.gameHistory = state.gameHistory.slice(-5);
     }
@@ -1159,6 +1298,8 @@ var app = (function () {
   return {
     showScreen: showScreen,
     newGame: newGame,
+    resetRules: resetRules,
+    refreshRulesField: refreshRulesField,
     startGame: startGame,
     newRound: newRound,
     editRound: editRound,
@@ -1193,5 +1334,5 @@ var app = (function () {
 })();
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { calcRoundScores: calcRoundScores, totalScores: totalScores, isGameOver: isGameOver, isRoundComplete: isRoundComplete, isValidManualScore: isValidManualScore, maxHeartsForPlayer: maxHeartsForPlayer, heartsButtonState: heartsButtonState, checkAutoAll: checkAutoAll, toggleAllState: toggleAllState, toggleManualModeState: toggleManualModeState, shufflerIndex: shufflerIndex, passDirection: passDirection };
+  module.exports = { calcRoundScores: calcRoundScores, totalScores: totalScores, isGameOver: isGameOver, isRoundComplete: isRoundComplete, isValidManualScore: isValidManualScore, maxHeartsForPlayer: maxHeartsForPlayer, heartsButtonState: heartsButtonState, checkAutoAll: checkAutoAll, toggleAllState: toggleAllState, toggleManualModeState: toggleManualModeState, shufflerIndex: shufflerIndex, passDirection: passDirection, normalizeRules: normalizeRules };
 }
