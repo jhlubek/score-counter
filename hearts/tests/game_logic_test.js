@@ -1,7 +1,7 @@
 // Game logic unit tests for hearts-counter scoring engine.
 // Run with: node tests/game_logic_test.js
 
-const { calcRoundScores, totalScores, isGameOver, isRoundComplete, isValidManualScore, maxHeartsForPlayer, heartsButtonState, checkAutoAll, toggleAllState, toggleManualModeState, shufflerIndex, passDirection } = require("../app.js");
+const { calcRoundScores, totalScores, isGameOver, isRoundComplete, isValidManualScore, maxHeartsForPlayer, heartsButtonState, checkAutoAll, toggleAllState, toggleManualModeState, shufflerIndex, passDirection, normalizeRules, losingPlayerIndexes } = require("../app.js");
 
 let passed = 0;
 let failed = 0;
@@ -701,6 +701,68 @@ function assertEq(actual, expected, msg) {
   assertEq(passDirection(2), "across", "third shuffler: pass across");
   assertEq(passDirection(3), "hold", "fourth shuffler: no pass");
   assertEq(passDirection(4), "left", "cycle wraps to pass left");
+})();
+
+// ── Custom game rules ──
+
+(function testNormalizeRulesUsesDefaults() {
+  assertEq(normalizeRules(null), { maxScore: 100, jackPoints: -8, allTakerPoints: 0, allOthersPoints: 26 }, "missing rules fall back to defaults");
+  assertEq(normalizeRules({ maxScore: 0, jackPoints: "nope" }).maxScore, 100, "invalid max score falls back to 100");
+  assertEq(normalizeRules({ maxScore: 50, jackPoints: -12, allTakerPoints: -5, allOthersPoints: 30 }), { maxScore: 50, jackPoints: -12, allTakerPoints: -5, allOthersPoints: 30 }, "valid custom rules are kept");
+})();
+
+(function testCustomJackAndAllScores() {
+  var rules = { maxScore: 50, jackPoints: -12, allTakerPoints: -5, allOthersPoints: 30 };
+  var jackOnly = [
+    { hearts: 0, jack: true, queen: 0, allCombo: false, manual: null },
+    { hearts: 0, jack: false, queen: 0, allCombo: false, manual: null },
+    { hearts: 0, jack: false, queen: 0, allCombo: false, manual: null },
+    { hearts: 0, jack: false, queen: 0, allCombo: false, manual: null },
+  ];
+  assertEq(calcRoundScores(jackOnly, rules)[0], -12, "jack uses the configured points");
+
+  var allCombo = [
+    { hearts: 13, jack: true, queen: 0, allCombo: true, noCards: false, manual: null },
+    { hearts: 0, jack: false, queen: 0, allCombo: false, noCards: false, manual: null },
+    { hearts: 0, jack: false, queen: 0, allCombo: false, noCards: true, manual: null },
+    { hearts: 0, jack: false, queen: 0, allCombo: false, noCards: false, manual: null },
+  ];
+  var scores = calcRoundScores(allCombo, rules);
+  assertEq(scores[0], -5 + -12, "player who took all gets taker points plus jack");
+  assertEq(scores[1], 30, "other players get the configured all-points");
+  assertEq(scores[2], 30 - 5, "no-cards player still gets -5 on top of the others' points");
+})();
+
+(function testGameOverUsesConfiguredMaxScore() {
+  var game = {
+    players: ["A", "B", "C", "D"],
+    rules: { maxScore: 40, jackPoints: -8, allTakerPoints: 0, allOthersPoints: 26 },
+    rounds: [
+      { entries: [
+        { hearts: 0, jack: false, queen: 0, allCombo: false, manual: 40 },
+        { hearts: 0, jack: false, queen: 0, allCombo: false, manual: 0 },
+        { hearts: 0, jack: false, queen: 0, allCombo: false, manual: 0 },
+        { hearts: 0, jack: false, queen: 0, allCombo: false, manual: 0 },
+      ]},
+    ],
+  };
+  assert(isGameOver(game), "game ends at the configured score");
+  game.rules.maxScore = 41;
+  assert(!isGameOver(game), "game continues below the configured score");
+})();
+
+(function testTiedPlayersOverTheLimitAllLose() {
+  assertEq(losingPlayerIndexes([0, 26, 18, 26], 10), [1, 2, 3], "every player over the limit loses, including a lower score");
+  assertEq(losingPlayerIndexes([0, 26, 18, 26], 26), [1, 3], "players tied on the limit all lose");
+  assertEq(losingPlayerIndexes([10, 30, 22, 30], 20), [1, 2, 3], "different scores over the limit all lose");
+  assertEq(losingPlayerIndexes([0, 40, 10, 5], 20), [1], "a single player over the limit loses");
+  assertEq(losingPlayerIndexes([10, 10, 10, 10], 20), [], "nobody over the limit");
+})();
+
+(function testManualRangeFollowsJackAndAll() {
+  assert(isValidManualScore(-12, { jackPoints: -12, allTakerPoints: 0, allOthersPoints: 26 }), "manual entry accepts the configured jack score");
+  assert(!isValidManualScore(-12), "default manual range still rejects -12");
+  assert(isValidManualScore(60, { jackPoints: -8, allTakerPoints: 0, allOthersPoints: 60 }), "manual entry accepts a higher all-others score");
 })();
 
 // ── Results ──
